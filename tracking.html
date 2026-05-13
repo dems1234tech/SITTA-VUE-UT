@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking DO - SITTA UT</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+</head>
+<body>
+    <div id="app">
+        <nav>
+            <a href="index.html" class="nav-brand">
+                SITTA UT
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Beranda</a>
+                <a href="stok.html">Stok Bahan Ajar</a>
+                <a href="tracking.html" class="active">Tracking DO</a>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="page-header">
+                <h1>Tracking <span style="color: var(--ut-blue);">Delivery Order.</span></h1>
+                <p>Kelola pengiriman bahan ajar dan registrasi pesanan mahasiswa baru.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 380px; gap: 2.5rem; align-items: start;">
+                <!-- Kolom Input DO -->
+                <div class="card" style="border-top: 4px solid var(--primary);">
+                    <div class="card-header">
+                        <h3 style="font-size: 0.9rem; font-weight: 800;"><i class="fas fa-truck-ramp-box"></i> INPUT DELIVERY ORDER BARU</h3>
+                    </div>
+                    <div class="card-body">
+                        <form @submit.prevent="submitDO">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                                <div class="input-group">
+                                    <label>Nomor DO (Auto)</label>
+                                    <input type="text" :value="nextDONumber" readonly style="color: var(--ut-blue); font-weight: 800; background: rgba(255,255,255,0.02);">
+                                </div>
+                                <div class="input-group">
+                                    <label>Tanggal Kirim</label>
+                                    <input type="date" v-model="form.tanggalKirim" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>NIM Mahasiswa</label>
+                                    <input type="text" v-model="form.nim" placeholder="Masukkan NIM" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>Nama Mahasiswa</label>
+                                    <input type="text" v-model="form.nama" placeholder="Nama Lengkap" required>
+                                </div>
+                                <div class="input-group">
+                                    <label>Ekspedisi</label>
+                                    <select v-model="form.ekspedisi" required>
+                                        <option value="">Pilih Ekspedisi</option>
+                                        <option value="JNE Regular">JNE Regular</option>
+                                        <option value="JNE Express">JNE Express</option>
+                                        <option value="Pos Kilat Khusus">Pos Kilat Khusus</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label>Paket Bahan Ajar</label>
+                                    <select v-model="selectedPackageId" required>
+                                        <option value="">Pilih Paket</option>
+                                        <option v-for="p in paketList" :key="p.kodePaket" :value="p.kodePaket">
+                                            {{ p.kodePaket }} - {{ p.namaPaket }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Detail Paket (Conditional) -->
+                            <div v-if="selectedPackage" class="card" style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border); margin-bottom: 2rem;">
+                                <div class="card-body" style="padding: 1.5rem;">
+                                    <h4 style="font-size: 0.75rem; font-weight: 800; color: var(--ut-blue); margin-bottom: 1rem;">MANIFEST ISI PAKET</h4>
+                                    <ul style="list-style: none; font-size: 0.85rem; color: var(--text-muted);">
+                                        <li v-for="item in selectedPackage.isiPaket" :key="item" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                                            <i class="fas fa-check-circle" style="color: #34d399; font-size: 0.8rem;"></i> {{ item }}
+                                        </li>
+                                    </ul>
+                                    <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">HARGA TOTAL</span>
+                                        <span style="font-weight: 800; color: #fff; font-size: 1.2rem;">{{ formatCurrency(selectedPackage.harga) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 0.9rem;">
+                                <i class="fas fa-paper-plane"></i> SUBMIT DELIVERY ORDER
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Riwayat DO -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="font-size: 0.9rem; font-weight: 800;"><i class="fas fa-receipt"></i> RIWAYAT TERBARU</h3>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div v-for="track in trackingHistory" :key="track.noDO" style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span style="font-weight: 800; color: var(--ut-blue); font-size: 0.85rem;">{{ track.noDO }}</span>
+                                <span class="status-pill success" style="font-size: 0.6rem;">TERKIRIM</span>
+                            </div>
+                            <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem;">{{ track.nama }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                                <i class="fas fa-box"></i> {{ track.paketNama }}<br>
+                                <i class="fas fa-shuttle-van"></i> {{ track.ekspedisi }}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 0.7rem; color: var(--text-muted);">{{ track.tanggalKirim }}</span>
+                                <span style="font-weight: 800; font-size: 0.95rem;">{{ formatCurrency(track.total) }}</span>
+                            </div>
+                        </div>
+
+                        <div v-if="trackingHistory.length === 0" style="padding: 5rem 2rem; text-align: center; color: var(--text-muted);">
+                            <i class="fas fa-terminal fa-3x" style="opacity: 0.1; margin-bottom: 1rem;"></i><br>
+                            Menunggu input sistem...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dataBahanAjar.js"></script>
+    <script src="js/tracking-app.js"></script>
+</body>
+</html>
